@@ -1,15 +1,21 @@
 # Speech Coach Backend
 
-AI-powered speech analysis and interactive coaching chat, built with FastAPI and Google’s Gemini. The analysis is grounded in `prompts/general_prompt.txt` and returns a strict JSON schema covering non-verbal, delivery, and content categories.
+AI-powered speech analysis and interactive coaching chat, built with FastAPI and Google's Gemini. The analysis is grounded in `prompts/general_prompt.txt` and returns a strict JSON schema covering non-verbal, delivery, and content categories.
 
 ## Features
-- Video analysis → structured feedback JSON (eye contact, gestures, posture, clarity/enunciation, intonation, filler words, organization/flow, persuasiveness/impact, clarity of message, overall summary).
-- Interactive chat → ask questions about your feedback; responses stay grounded in the feedback JSON.
-- Simple REST API with OpenAPI docs at `/docs`.
+- **Video analysis** → structured feedback JSON (eye contact, gestures, posture, clarity/enunciation, intonation, filler words, organization/flow, persuasiveness/impact, clarity of message, overall summary)
+- **Interactive chat** → ask questions about your feedback; responses stay grounded in the feedback JSON
+- **🆕 Speech transcription** → convert audio to text using ElevenLabs
+- **🆕 Content improvement** → AI-powered speech enhancement with Gemini
+- **🆕 Voice cloning** → generate improved speech in user's own voice
+- **🆕 Full workflow** → transcribe → improve → clone → generate in one call
+- Simple REST API with OpenAPI docs at `/docs`
 
 ## Tech Stack
 - FastAPI, Uvicorn
 - google-generativeai (Gemini)
+- **🆕 ElevenLabs** (transcription & voice cloning)
+- **🆕 pydub** (audio processing)
 - Pydantic (validation)
 - Python 3.10+ recommended
 
@@ -42,6 +48,9 @@ backend/
 - Python 3.10+
 - A Google AI Studio API key (Gemini)
   - Set in `.env` as `GOOGLE_AI_STUDIO_API_KEY`
+- **🆕 An ElevenLabs API key** (for speech improvement features)
+  - Set in `.env` as `ELEVENLABS_API_KEY`
+  - Voice cloning requires paid plan (Starter $5/month+)
 
 ## Setup (macOS)
 1) Create and activate a virtual environment
@@ -61,6 +70,7 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env and set:
 # GOOGLE_AI_STUDIO_API_KEY=your_key_here
+# ELEVENLABS_API_KEY=your_elevenlabs_key_here
 ```
 
 4) Run the API
@@ -143,6 +153,89 @@ curl -X POST "http://127.0.0.1:8000/chat/message" \
   -H "Content-Type: application/json" \
   -d '{"conversation_id":"<from /chat/start>","user_message":"What timestamps show weak eye contact?"}'
 ```
+
+### 🆕 POST /speech/transcribe
+Transcribe audio to text using ElevenLabs.
+
+Request (form-data):
+- `audio`: file (MP3, WAV, M4A, etc.) - Required
+- `language_code`: string (optional) - e.g., "eng", "spa", or empty/null for auto-detect
+- `diarize`: boolean (optional, default: false) - Annotate who is speaking
+- `tag_audio_events`: boolean (optional, default: false) - Tag laughter, applause, etc.
+
+Example:
+```bash
+curl -X POST "http://127.0.0.1:8000/speech/transcribe" \
+  -F "audio=@speech.mp3" \
+  -F "language_code=eng"
+```
+
+Response:
+```json
+{
+  "original_transcription": "The transcribed text..."
+}
+```
+
+### 🆕 POST /speech/improve
+Transcribe and improve speech content with AI.
+
+Request (form-data):
+- `audio`: file - Required
+- `improvement_focus`: string (optional, e.g., "clarity and persuasiveness")
+- `language_code`: string (optional)
+- `diarize`: boolean (optional)
+- `tag_audio_events`: boolean (optional)
+
+Example:
+```bash
+curl -X POST "http://127.0.0.1:8000/speech/improve" \
+  -F "audio=@speech.mp3" \
+  -F "improvement_focus=clarity"
+```
+
+Response:
+```json
+{
+  "original_transcription": "...",
+  "improved_content": {
+    "improved_speech": "...",
+    "suggestions": ["..."],
+    "key_changes": [{"change": "...", "reason": "..."}],
+    "summary": "..."
+  }
+}
+```
+
+### 🆕 POST /speech/clone-and-improve
+Complete workflow: transcribe → improve → clone voice → generate improved audio.
+
+**Requirements:**
+- ⚠️ Requires ElevenLabs paid plan for IVC (Instant Voice Cloning)
+- Minimum 30 seconds of clear audio recommended
+- Best results with 1-3 minutes of varied speech
+
+Request (form-data):
+- `audio`: file - Required
+- `improvement_focus`: string (optional)
+- `language_code`: string (optional)
+- `diarize`: boolean (optional)
+- `tag_audio_events`: boolean (optional)
+
+Example:
+```bash
+curl -X POST "http://127.0.0.1:8000/speech/clone-and-improve" \
+  -F "audio=@speech.mp3" \
+  --output improved_speech.mp3
+```
+
+Response:
+- Audio file (audio/mpeg) with improved speech in user's voice
+
+### 🆕 POST /speech/clone-and-improve-detailed
+Same as above but returns JSON with base64-encoded audio and full metadata.
+
+**Testing:** Use `python test_transcribe.py <audio_file>` to test transcription functionality.
 
 ## End-to-End Example
 
@@ -234,26 +327,61 @@ Note: The in-memory conversation store is for development. Use a persistent stor
 
 ## Troubleshooting
 
-- Missing API key
-  - Error: `ValueError: GOOGLE_AI_STUDIO_API_KEY not set`
-  - Fix: Set it in `.env` and restart
+### General Issues
 
-- Gemini file not ACTIVE
+- **Missing API key**
+  - Error: `ValueError: GOOGLE_AI_STUDIO_API_KEY not set` or `ELEVENLABS_API_KEY not set`
+  - Fix: Set keys in `.env` and restart the server
+
+- **Gemini file not ACTIVE**
   - Error: `400 The File <id> is not in an ACTIVE state and usage is not allowed.`
-  - Cause: Uploaded files may take time to process before they’re usable.
+  - Cause: Uploaded files may take time to process before they're usable.
   - Fix: Retry after a few seconds. If you still hit this, consider adding polling to wait for the file to become ACTIVE before generating content, or re-encode your video to a standard format/bitrate and re-upload.
 
-- JSON parse errors from analysis
+- **JSON parse errors from analysis**
   - Ensure the model returns valid JSON (no code fences/markdown). The prompt enforces this but models can still emit fences; strip them before parsing if needed.
 
-- 413 Payload too large
+- **413 Payload too large**
   - Reduce video size/bitrate or configure a reverse proxy (Nginx) with larger body limits.
 
-- CORS blocked in browser
+- **CORS blocked in browser**
   - Adjust `CORSMiddleware` in `main.py` to restrict or allow your frontend origin.
 
-- Apple Silicon build issues
+- **Apple Silicon build issues**
   - Upgrade pip (`python -m pip install --upgrade pip`) and reinstall.
+
+### Speech Improvement Issues
+
+- **Invalid language code error**
+  - Error: `Invalid language code received: ''`
+  - Cause: Empty string passed for language_code instead of null
+  - Fix: Use `None` in Python or omit the parameter; empty strings are automatically converted to `None`
+  - Valid codes: eng, spa, fra, deu, ita, jpn, kor, zho, etc. (see error message for full list)
+
+- **Transcription failed**
+  - Verify audio file is not corrupted
+  - Check audio format is supported (MP3, WAV, M4A, OGG, FLAC, WEBM)
+  - Ensure audio contains clear speech
+  - Check ElevenLabs API key is valid
+
+- **Voice cloning failed**
+  - Error: `'VoicesClient' object has no attribute 'add'`
+  - Fix: Already fixed in current version (uses `voices.ivc.create()`)
+  - Requires paid ElevenLabs plan with IVC (Instant Voice Cloning) access
+  - Provide at least 30 seconds of clear audio (1-3 minutes recommended)
+  - Ensure consistent audio quality throughout
+  - Check your ElevenLabs account has voice cloning permissions
+  - Verify you're using the latest `elevenlabs` package version
+
+- **Test transcription**
+  ```bash
+  python test_transcribe.py path/to/audio.mp3
+  ```
+
+- **Update ElevenLabs SDK**
+  ```bash
+  pip install --upgrade elevenlabs
+  ```
 
 ## Production Notes
 - Restrict CORS to known origins

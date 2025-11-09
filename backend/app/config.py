@@ -15,6 +15,10 @@ GOOGLE_AI_STUDIO_API_KEY = os.getenv("GOOGLE_AI_STUDIO_API_KEY")
 if not GOOGLE_AI_STUDIO_API_KEY:
     raise ValueError("GOOGLE_AI_STUDIO_API_KEY not set in environment")
 
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+if not ELEVENLABS_API_KEY:
+    raise ValueError("ELEVENLABS_API_KEY not set in environment")
+
 # Model configuration
 GEMINI_MODEL = "gemini-2.5-flash"
 #GEMINI_MODEL = "gemini-2.5-pro" 
@@ -23,4 +27,12 @@ GENERATION_CONFIG = {
     "top_p": 0.95,
     "top_k": 40,
     "max_output_tokens": 8192,
+}
+
+# ElevenLabs configuration
+ELEVENLABS_VOICE_SETTINGS = {
+    "stability": 0.5,
+    "similarity_boost": 0.75,
+    "style": 0.0,
+    "use_speaker_boost": True
 }

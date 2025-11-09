@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from app.routers import analyze, chat
+from app.routers import analyze, chat, speech_improvement
 
 # Configure logging
 logging.basicConfig(
@@ -31,6 +31,7 @@ app.add_middleware(
 # Include routers
 app.include_router(analyze.router)
 app.include_router(chat.router)
+app.include_router(speech_improvement.router)
 
 @app.get("/")
 async def root():
@@ -41,6 +42,12 @@ async def root():
             "chat": {
                 "start": "/chat/start - Start Q&A session with feedback JSON",
                 "message": "/chat/message - Ask questions about your feedback"
+            },
+            "speech_improvement": {
+                "transcribe": "/speech/transcribe - Transcribe audio to text",
+                "improve": "/speech/improve - Transcribe and improve speech content",
+                "clone_and_improve": "/speech/clone-and-improve - Full workflow: transcribe, improve, clone voice, generate audio",
+                "clone_and_improve_detailed": "/speech/clone-and-improve-detailed - Same as above with detailed JSON response"
             }
         }
     }

@@ -60,3 +60,30 @@ class ChatStartResponse(BaseModel):
 
 class ChatMessageResponse(BaseModel):
     assistant_reply: str
+
+# Speech Improvement models
+class TranscriptionRequest(BaseModel):
+    improvement_focus: Optional[str] = Field(None, description="Optional focus areas for improvement (e.g., 'clarity', 'persuasiveness')")
+
+class KeyChange(BaseModel):
+    change: str
+    reason: str
+
+class SpeechImprovement(BaseModel):
+    improved_speech: str
+    suggestions: List[str]
+    key_changes: List[KeyChange]
+    summary: str
+
+class TranscriptionResponse(BaseModel):
+    original_transcription: str
+    
+class ImprovementResponse(BaseModel):
+    original_transcription: str
+    improved_content: SpeechImprovement
+
+class FullWorkflowResponse(BaseModel):
+    original_transcription: str
+    improved_content: SpeechImprovement
+    audio_generated: bool
+    audio_size: int = Field(..., description="Size of generated audio in bytes")
