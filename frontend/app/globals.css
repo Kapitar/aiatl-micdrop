@@ -25,5 +25,19 @@ body {
 }
 
 .static-gradient {
-  background: linear-gradient(135deg, #050510 0%, #0a0515 25%, #050510 50%, #0a0515 75%, #050510 100%);
+  background: linear-gradient(135deg, #0a0f1e 0%, #0d1525 15%, #0f1a2e 30%, #0d1525 45%, #0a0f1e 60%, #0d1a2a 75%, #0a0f1e 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 20s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }

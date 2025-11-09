@@ -396,8 +396,8 @@ function AnalysisContent() {
     return (
       <div className="min-h-screen relative text-white flex items-center justify-center p-6 overflow-hidden">
         <div className="fixed inset-0 static-gradient"></div>
-        <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-purple-950/8 rounded-full blur-3xl"></div>
-        <div className="fixed bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-950/8 rounded-full blur-3xl"></div>
+        <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-teal-900/12 rounded-full blur-3xl"></div>
+        <div className="fixed bottom-0 right-1/4 w-[500px] h-[500px] bg-emerald-900/10 rounded-full blur-3xl"></div>
         <div className="relative z-10 text-center">
           <div className="relative w-20 h-20 mx-auto mb-6">
             <div className="absolute inset-0 border-4 border-white/10 rounded-full"></div>
@@ -449,9 +449,11 @@ function AnalysisContent() {
   return (
     <div className="min-h-screen relative text-white p-6 overflow-hidden">
       <div className="fixed inset-0 static-gradient"></div>
-      <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-purple-950/8 rounded-full blur-3xl"></div>
-      <div className="fixed bottom-0 right-1/4 w-[500px] h-[500px] bg-blue-950/8 rounded-full blur-3xl"></div>
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-3xl"></div>
+      <div className="fixed top-0 left-1/4 w-[500px] h-[500px] bg-teal-900/12 rounded-full blur-3xl"></div>
+      <div className="fixed bottom-0 right-1/4 w-[500px] h-[500px] bg-emerald-900/10 rounded-full blur-3xl"></div>
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-600/15 rounded-full blur-3xl"></div>
+      <div className="fixed top-1/3 right-1/3 w-[300px] h-[300px] bg-indigo-900/8 rounded-full blur-3xl"></div>
+      <div className="fixed bottom-1/4 left-1/3 w-[400px] h-[400px] bg-teal-800/6 rounded-full blur-3xl"></div>
       
       <div className="relative z-10 max-w-7xl mx-auto">
         {/* Header */}
