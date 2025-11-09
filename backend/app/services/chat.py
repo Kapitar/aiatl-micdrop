@@ -1,4 +1,4 @@
-import google.generativeai as genai
+from google import genai
 import uuid
 import logging
 from typing import Dict, Any
@@ -38,7 +38,7 @@ class FeedbackChat:
     """Interactive chat for discussing speech feedback."""
     
     def __init__(self):
-        genai.configure(api_key=GOOGLE_AI_STUDIO_API_KEY)
+        self.client = genai.Client(api_key=GOOGLE_AI_STUDIO_API_KEY)
         # In-memory store for dev; use Redis/DB in production
         self.conversations: Dict[str, Dict[str, Any]] = {}
     
@@ -54,15 +54,9 @@ class FeedbackChat:
         """
         conversation_id = str(uuid.uuid4())
         
-        # Initialize chat with system instruction
-        model = genai.GenerativeModel(
-            GEMINI_MODEL,
-            system_instruction=CHAT_SYSTEM_INSTRUCTION
-        )
-        chat = model.start_chat(history=[])
-        
+        # Store conversation with empty history
         self.conversations[conversation_id] = {
-            "chat": chat,
+            "history": [],
             "feedback_json": feedback_json
         }
         
@@ -84,19 +78,64 @@ class FeedbackChat:
             raise ValueError(f"Conversation {conversation_id} not found")
         
         conv = self.conversations[conversation_id]
-        chat = conv["chat"]
+        history = conv["history"]
         feedback_json = conv["feedback_json"]
         
         # Construct prompt with feedback context
-        prompt = f"""feedback_json = {feedback_json}
+        user_prompt = f"""feedback_json = {feedback_json}
 
 user_message = {user_message}
 
 Answer the user's question using only the feedback_json above."""
         
         try:
-            response = chat.send_message(prompt)
-            return response.text
+            # Build contents with system instruction and conversation history
+            contents = []
+            
+            # Add system instruction as first user message if history is empty
+            if not history:
+                contents.append({
+                    "role": "user",
+                    "parts": [{"text": CHAT_SYSTEM_INSTRUCTION}]
+                })
+                contents.append({
+                    "role": "model",
+                    "parts": [{"text": "Understood. I will answer questions strictly based on the feedback_json provided."}]
+                })
+            
+            # Add conversation history
+            contents.extend(history)
+            
+            # Add current user message
+            contents.append({
+                "role": "user",
+                "parts": [{"text": user_prompt}]
+            })
+            
+            response = self.client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=contents,
+                config={
+                    "temperature": 0.7,
+                    "top_p": 0.95,
+                    "top_k": 40,
+                    "max_output_tokens": 2048,
+                }
+            )
+            
+            assistant_reply = response.text
+            
+            # Update conversation history
+            history.append({
+                "role": "user",
+                "parts": [{"text": user_prompt}]
+            })
+            history.append({
+                "role": "model",
+                "parts": [{"text": assistant_reply}]
+            })
+            
+            return assistant_reply
         except Exception as e:
             logger.error(f"Chat error: {e}")
             raise

@@ -1,5 +1,5 @@
 # Core AI/ML dependencies
-google-generativeai>=0.3.0
+google-genai>=0.3.0
 
 # Voice/Speech APIs
 elevenlabs>=1.0.0

@@ -21,22 +21,35 @@ elevenlabs_service = ElevenLabsService()
 
 
 def normalize_language_code(code: Optional[str]) -> Optional[str]:
-    """Convert empty string, whitespace, or string 'None' to None for auto-detect."""
+    """Convert empty string, whitespace, string 'None', or 'string' to None for auto-detect."""
     if code is None:
         return None
     if isinstance(code, str):
         stripped = code.strip()
-        # Handle empty string or the string literal "None"
-        if stripped == "" or stripped.lower() == "none":
+        # Handle empty string, the string literal "None", or the placeholder "string"
+        if stripped == "" or stripped.lower() == "none" or stripped.lower() == "string":
             return None
         return stripped
     return code
 
 
+def normalize_optional_string(value: Optional[str]) -> Optional[str]:
+    """Convert empty string, whitespace, string 'None', or 'string' to None."""
+    if value is None:
+        return None
+    if isinstance(value, str):
+        stripped = value.strip()
+        # Handle empty string, the string literal "None", or the placeholder "string"
+        if stripped == "" or stripped.lower() == "none" or stripped.lower() == "string":
+            return None
+        return stripped
+    return value
+
+
 @router.post("/transcribe", response_model=TranscriptionResponse)
 async def transcribe_audio(
     audio: UploadFile = File(..., description="Audio file to transcribe"),
-    language_code: Optional[str] = Form(default=None, description="Language code (e.g., 'eng', 'spa') or leave empty for auto-detect"),
+    language_code: Optional[str] = Form(default="", description="Language code (e.g., 'eng', 'spa') or leave empty for auto-detect"),
     diarize: bool = Form(default=False, description="Whether to annotate who is speaking"),
     tag_audio_events: bool = Form(default=False, description="Tag audio events like laughter, applause, etc.")
 ):
@@ -79,8 +92,8 @@ async def transcribe_audio(
 @router.post("/improve", response_model=ImprovementResponse)
 async def improve_speech(
     audio: UploadFile = File(..., description="Audio file to transcribe and improve"),
-    improvement_focus: Optional[str] = Form(default=None, description="Optional focus areas (e.g., 'clarity', 'persuasiveness')"),
-    language_code: Optional[str] = Form(default=None, description="Language code (e.g., 'eng', 'spa') or leave empty for auto-detect"),
+    improvement_focus: Optional[str] = Form(default="", description="Optional focus areas (e.g., 'clarity', 'persuasiveness')"),
+    language_code: Optional[str] = Form(default="", description="Language code (e.g., 'eng', 'spa') or leave empty for auto-detect"),
     diarize: bool = Form(default=False, description="Whether to annotate who is speaking"),
     tag_audio_events: bool = Form(default=False, description="Tag audio events like laughter, applause, etc.")
 ):
@@ -110,7 +123,7 @@ async def improve_speech(
         # Improve content
         improvements = await elevenlabs_service.improve_speech_content(
             transcription,
-            improvement_focus
+            normalize_optional_string(improvement_focus)
         )
         
         return ImprovementResponse(
@@ -130,8 +143,8 @@ async def improve_speech(
 @router.post("/clone-and-improve")
 async def clone_voice_and_improve(
     audio: UploadFile = File(..., description="Audio file to clone voice from"),
-    improvement_focus: Optional[str] = Form(default=None, description="Optional focus areas for improvement (e.g., 'clarity', 'pacing'). Leave empty for general improvement"),
-    language_code: Optional[str] = Form(default=None, description="Language code (e.g., 'eng', 'spa') or leave empty for auto-detect"),
+    improvement_focus: Optional[str] = Form(default="", description="Optional focus areas for improvement (e.g., 'clarity', 'pacing'). Leave empty for general improvement"),
+    language_code: Optional[str] = Form(default="", description="Language code (e.g., 'eng', 'spa') or leave empty for auto-detect"),
     diarize: bool = Form(default=False, description="Whether to annotate who is speaking"),
     tag_audio_events: bool = Form(default=False, description="Tag audio events like laughter, applause, etc.")
 ):
@@ -152,7 +165,7 @@ async def clone_voice_and_improve(
         # Run full workflow with optional parameters
         result = await elevenlabs_service.full_speech_improvement_workflow(
             str(audio_path),
-            improvement_focus,
+            normalize_optional_string(improvement_focus),
             language_code=normalize_language_code(language_code),
             diarize=diarize,
             tag_audio_events=tag_audio_events
@@ -183,8 +196,8 @@ async def clone_voice_and_improve(
 @router.post("/clone-and-improve-detailed", response_model=FullWorkflowResponse)
 async def clone_voice_and_improve_detailed(
     audio: UploadFile = File(..., description="Audio file to clone voice from"),
-    improvement_focus: Optional[str] = Form(default=None, description="Optional focus areas for improvement (e.g., 'clarity', 'pacing'). Leave empty for general improvement"),
-    language_code: Optional[str] = Form(default=None, description="Language code (e.g., 'eng', 'spa') or leave empty for auto-detect"),
+    improvement_focus: Optional[str] = Form(default="", description="Optional focus areas for improvement (e.g., 'clarity', 'pacing'). Leave empty for general improvement"),
+    language_code: Optional[str] = Form(default="", description="Language code (e.g., 'eng', 'spa') or leave empty for auto-detect"),
     diarize: bool = Form(default=False, description="Whether to annotate who is speaking"),
     tag_audio_events: bool = Form(default=False, description="Tag audio events like laughter, applause, etc.")
 ):
@@ -204,7 +217,7 @@ async def clone_voice_and_improve_detailed(
         # Run full workflow with optional parameters
         result = await elevenlabs_service.full_speech_improvement_workflow(
             str(audio_path),
-            improvement_focus,
+            normalize_optional_string(improvement_focus),
             language_code=normalize_language_code(language_code),
             diarize=diarize,
             tag_audio_events=tag_audio_events

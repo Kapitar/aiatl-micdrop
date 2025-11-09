@@ -1,8 +1,9 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from fastapi.responses import JSONResponse
 import logging
 import shutil
 from pathlib import Path
+from typing import Optional, Union
 
 from app.config import UPLOADS_DIR
 from app.services.analyzer import SpeechAnalyzer
@@ -16,7 +17,7 @@ analyzer = SpeechAnalyzer()
 @router.post("/video", response_model=FeedbackResponse)
 async def analyze_video(
     video: UploadFile = File(..., description="Video file to analyze"),
-    audio: UploadFile = File(None, description="Optional separate audio file")
+    audio: Union[UploadFile, str, None] = File(None, description="Optional separate audio file")
 ):
     """
     Analyze a speech video and return structured feedback following the general_prompt.txt schema.
@@ -31,17 +32,27 @@ async def analyze_video(
     audio_path = None
     
     try:
+        # Validate video file
+        if not video or not video.filename:
+            raise HTTPException(status_code=400, detail="Video file is required")
+        
+        # Handle audio - it might be a string, None, or UploadFile
+        # Only process if it's actually an UploadFile with a filename
+        audio_file = None
+        if isinstance(audio, UploadFile) and hasattr(audio, 'filename') and audio.filename:
+            audio_file = audio
+        
         # Save uploaded video
         video_path = UPLOADS_DIR / f"video_{video.filename}"
         with video_path.open("wb") as buffer:
             shutil.copyfileobj(video.file, buffer)
         logger.info(f"Saved video to {video_path}")
         
-        # Save audio if provided
-        if audio:
-            audio_path = UPLOADS_DIR / f"audio_{audio.filename}"
+        # Save audio if provided (and is actually a file)
+        if audio_file:
+            audio_path = UPLOADS_DIR / f"audio_{audio_file.filename}"
             with audio_path.open("wb") as buffer:
-                shutil.copyfileobj(audio.file, buffer)
+                shutil.copyfileobj(audio_file.file, buffer)
             logger.info(f"Saved audio to {audio_path}")
         
         # Analyze

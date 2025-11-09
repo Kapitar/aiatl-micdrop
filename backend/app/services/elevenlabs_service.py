@@ -2,14 +2,13 @@ import logging
 from typing import Optional, Dict, Any
 from pathlib import Path
 from elevenlabs import ElevenLabs, VoiceSettings
-import google.generativeai as genai
+from google import genai
 
 from app.config import (
     ELEVENLABS_API_KEY, 
     ELEVENLABS_VOICE_SETTINGS,
     GOOGLE_AI_STUDIO_API_KEY,
-    GEMINI_MODEL,
-    GENERATION_CONFIG
+    GEMINI_MODEL
 )
 
 logger = logging.getLogger(__name__)
@@ -20,8 +19,7 @@ class ElevenLabsService:
     
     def __init__(self):
         self.client = ElevenLabs(api_key=ELEVENLABS_API_KEY)
-        genai.configure(api_key=GOOGLE_AI_STUDIO_API_KEY)
-        self.gemini_model = genai.GenerativeModel(GEMINI_MODEL)
+        self.gemini_client = genai.Client(api_key=GOOGLE_AI_STUDIO_API_KEY)
         
     async def transcribe_audio(
         self, 
@@ -82,7 +80,7 @@ class ElevenLabsService:
         improvement_focus: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Use Gemini to improve the content of a speech transcription.
+        Use Gemini to improve the content of a speech transcription using structured outputs.
         
         Args:
             transcription: The original transcribed text
@@ -92,7 +90,9 @@ class ElevenLabsService:
             Dictionary with improved text and suggestions
         """
         try:
-            logger.info("Improving speech content with Gemini")
+            from app.models import SpeechImprovement
+            
+            logger.info("Improving speech content with Gemini using structured outputs")
             
             # Build the improvement prompt
             prompt = f"""You are a professional speech coach. Analyze and improve the following speech transcription.
@@ -105,46 +105,28 @@ Original Speech:
 Please provide:
 1. An improved version of the speech with better structure, clarity, and impact
 2. Specific suggestions for improvement
-3. Key changes made and why
-
-Return your response in the following JSON format:
-{{
-    "improved_speech": "The improved version of the speech",
-    "suggestions": [
-        "Suggestion 1",
-        "Suggestion 2",
-        "Suggestion 3"
-    ],
-    "key_changes": [
-        {{
-            "change": "Description of change",
-            "reason": "Why this change improves the speech"
-        }}
-    ],
-    "summary": "Brief summary of the improvements made"
-}}
+3. Key changes made and why (each change should include what was changed and the reason)
+4. A brief summary of the improvements made
 """
             
-            response = self.gemini_model.generate_content(
-                prompt,
-                generation_config=GENERATION_CONFIG
+            response = self.gemini_client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt,
+                config={
+                    "response_mime_type": "application/json",
+                    "response_json_schema": SpeechImprovement.model_json_schema(),
+                    "temperature": 0.4,
+                    "top_p": 0.95,
+                    "top_k": 40,
+                    "max_output_tokens": 8192,
+                }
             )
             
-            # Parse the response
-            import json
-            raw_text = response.text.strip()
+            # Validate and parse the response using Pydantic
+            improved_content = SpeechImprovement.model_validate_json(response.text)
+            logger.info("Speech content improvement completed and validated")
             
-            # Remove markdown code fences if present
-            if raw_text.startswith("```"):
-                raw_text = raw_text.split("```")[1]
-                if raw_text.startswith("json"):
-                    raw_text = raw_text[4:]
-                raw_text = raw_text.strip()
-            
-            improved_content = json.loads(raw_text)
-            logger.info("Speech content improvement completed")
-            
-            return improved_content
+            return improved_content.model_dump()
             
         except Exception as e:
             logger.error(f"Speech improvement failed: {e}")
